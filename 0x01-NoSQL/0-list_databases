@@ -1,2 +1,2 @@
 // Script that lists all databases in MongoDB
-SHOW dbs
+show dbs;
