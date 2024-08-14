@@ -12,26 +12,22 @@ from functools import wraps
 
 
 def count_calls(method: Callable) -> Callable:
-    """Decorator to count how many times a function is called
-    """
+    """A functon that returns a callable"""
     key = method.__qualname__
 
     @wraps(method)
     def wrapper(self, *args, **kwargs):
-        """Wrapper function
-        """
+        """A functon wrapper"""
         self._redis.incr(key)
         return method(self, *args, **kwargs)
     return wrapper
 
 
 def call_history(method: Callable) -> Callable:
-    """Decorator to store the history of inputs and outputs for a function
-    """
+    """A function that store the history of inputs and outputs for a particular function"""
     @wraps(method)
     def wrapper(self, *args):
-        """Wrapper function
-        """
+        """A function wrapper"""
         input = str(args)
         self._redis.rpush(f"{method.__qualname__}:inputs", input)
 
@@ -42,7 +38,7 @@ def call_history(method: Callable) -> Callable:
     return wrapper
 
 def replay(method: Callable) -> None:
-    """doc doc class"""
+    """A function to display the history of calls of a particular function"""
     input_key = "{}:inputs".format(method.__qualname__)
     output_key = "{}:outputs".format(method.__qualname__)
 
