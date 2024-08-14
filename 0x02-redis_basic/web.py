@@ -1,36 +1,55 @@
 #!/usr/bin/env python3
+"""Module for implementing an expiring web cache and tracker
 """
-Caching request module
-"""
-import redis
 import requests
+import time
 from functools import wraps
-from typing import Callable
+
+CACHE_EXPIRATION_TIME = 10  # seconds
+CACHE = {}
 
 
-def track_get_page(fn: Callable) -> Callable:
-    """ Decorator for get_page
+def cache(fn):
+    """_summary_
+
+    Args:
+        fn (function): _description_
+
+    Returns:
+        _type_: _description_
     """
     @wraps(fn)
-    def wrapper(url: str) -> str:
-        """ Wrapper that:
-            - check whether a url's data is cached
-            - tracks how many times get_page is called
+    def wrapped(*args, **kwargs):
+        """_summary_
+
+        Returns:
+            _type_: _description_
         """
-        client = redis.Redis()
-        client.incr(f'count:{url}')
-        cached_page = client.get(f'{url}')
-        if cached_page:
-            return cached_page.decode('utf-8')
-        response = fn(url)
-        client.set(f'{url}', response, 10)
-        return response
-    return wrapper
+        url = args[0]
+        if url in CACHE and CACHE[url]["timestamp"] + CACHE_EXPIRATION_TIME > \
+                time.time():
+            CACHE[url]["count"] += 1
+            return CACHE[url]["content"]
+        else:
+            content = fn(*args, **kwargs)
+            CACHE[url] = {"content": content,
+                          "timestamp": time.time(), "count": 1}
+            return content
+    return wrapped
 
 
-@track_get_page
+@cache
 def get_page(url: str) -> str:
-    """ Makes a http request to a given endpoint
+    """_summary_
+
+    Args:
+        url (str): _description_
+
+    Returns:
+        str: _description_
     """
+    global count
+    # increment count
+    count += 1
     response = requests.get(url)
-    return response.text
+    return response.content.decode('utf-8')
