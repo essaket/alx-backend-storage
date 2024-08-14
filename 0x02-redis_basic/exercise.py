@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """0. Writing strings to Redis
    1. Reading from Redis and recovering original type
@@ -6,6 +5,7 @@
    3. Storing lists
    4. Retrieving lists
 """
+from unittest.mock import call
 import redis
 import uuid
 from typing import Callable, Union
@@ -18,7 +18,7 @@ def count_calls(method: Callable) -> Callable:
 
     @wraps(method)
     def wrapper(self, *args, **kwargs):
-        """A functon wrapper"""
+        """A fucntion wrapper"""
         self._redis.incr(key)
         return method(self, *args, **kwargs)
     return wrapper
@@ -28,7 +28,7 @@ def call_history(method: Callable) -> Callable:
     """A function that store the history of inputs and outputs for a particular function"""
     @wraps(method)
     def wrapper(self, *args):
-        """A function wrapper"""
+        """A fucntion wrapper"""
         input = str(args)
         self._redis.rpush(f"{method.__qualname__}:inputs", input)
 
@@ -38,7 +38,10 @@ def call_history(method: Callable) -> Callable:
         return output
     return wrapper
 
-class Cashe:
+
+class Cache:
+    """A Cache class"""
+
     def __init__(self):
         """__init__ method"""
         self._redis = redis.Redis()
@@ -58,6 +61,7 @@ class Cashe:
         data = self._redis.get(key)
         if data is None:
             return None
+
         if fn:
             return fn(data)
         return data
@@ -70,7 +74,8 @@ class Cashe:
         """Get data from cache as integer"""
         return self.get(key, int)
 
-def replay(method: Callable) -> None:
+
+def replay(method: Callable):
     """A function to display the history of calls of a particular function"""
     method_name = method.__qualname__
     r = redis.Redis()
