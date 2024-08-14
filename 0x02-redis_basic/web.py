@@ -1,23 +1,30 @@
-
 #!/usr/bin/env python3
-"""
-create a web cach
-"""
-import redis
+"""Implement an expiring web cache and tracker"""
+from datetime import timedelta
+from typing import Callable
 import requests
-rc = redis.Redis()
-count = 0
+from functools import wraps
+import redis
 
 
+def cache_track_response(method: Callable):
+    """Cache and track function response"""
+
+    @wraps(method)
+    def wrapper(url: str, *args, **kwargs):
+        """Implement the caching and tracking"""
+        count_key = "count:{}".format(url)
+        _redis = redis.Redis()
+        _redis.incr(count_key)
+        result = method(url, *args, **kwargs)
+        _redis.setex(url, timedelta(seconds=10), str(result))
+        return result
+
+    return wrapper
+
+
+@cache_track_response
 def get_page(url: str) -> str:
-    """ get a page and cach value"""
-    rc.set(f"cached:{url}", count)
-    resp = requests.get(url)
-    rc.incr(f"count:{url}")
-    rc.setex(f"cached:{url}", 10, rc.get(f"cached:{url}"))
-    return resp.text
-
-
-if __name__ == "__main__":
-    get_page('http://slowwly.robertomurray.co.uk')
-
+    """Return HTML content of the `url` specified"""
+    response = requests.get(url)
+    return response.text
