@@ -1,38 +1,39 @@
 #!/usr/bin/env python3
-'''A module with tools for request caching and tracking.
-'''
+"""Module containing function to return HTML content of a particular URL"""
 import redis
 import requests
 from functools import wraps
-from typing import Callable
+
+data = redis.Redis()
 
 
-redis_store = redis.Redis()
-'''The module-level Redis instance.
-'''
+def cached_content_fun(method):
+    """Function that returns html content"""
 
-
-def data_cacher(method: Callable) -> Callable:
-    '''Caches the output of fetched data.
-    '''
     @wraps(method)
-    def invoker(url) -> str:
-        '''The wrapper function for caching the output.
-        '''
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
+    def wrapper(url: str):
+        cached_content = data.get(f"cached:{url}")
+        if cached_content:
+            return cached_content.decode('utf-8')
+
+        content = method(url)
+        data.setex(f"cached:{url}", 10, content)
+        return content
+
+    return wrapper
 
 
-@data_cacher
+@cached_content_fun
 def get_page(url: str) -> str:
-    '''Returns the content of a URL after caching the request's response,
-    and tracking the request.
-    '''
-    return requests.get(url).text
+    """Function thattracks how many times a particular URL was accessed"""
+
+    count = data.incr(f"count:{url}")
+    content = requests.get(url).text
+    # print(content)
+    # print("Count: {}".format(count))
+    return content
+
+
+# if __name__ == "__main__":
+    # get_page('http://slowwly.robertomurray.co.uk')
+    # get_page('http://google.com')
