@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""5. Implementing an expiring web cache and tracker"""
+"""Module for redis exercise
+"""
+
 import requests
 import redis
-redise = redis.Redis()
+
+r = redis.Redis()
 
 
 def get_page(url: str) -> str:
-    """A fucntion that Get the HTML content of a particular URL and returns it"""
-    redise.incr(f"count:{url}")
+    """Get the HTML content of a particular URL and returns it.
+    """
+    r.incr(f"count:{url}")
 
-    cached = redise.get(url)
+    cached = r.get(url)
     if cached:
         return cached.decode('utf-8')
 
     html_content = requests.get(url).text
-    redise.setex(url, 10, html_content)
+
+    r.setex(url, 10, html_content)
 
     return html_content
