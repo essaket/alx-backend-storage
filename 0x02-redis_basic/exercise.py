@@ -11,6 +11,52 @@ from typing import Callable, Union
 from functools import wraps
 
 
+def count_calls(method: Callable) -> Callable:
+    """Decorator to count how many times a function is called
+    """
+    key = method.__qualname__
+
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        """Wrapper function
+        """
+        self._redis.incr(key)
+        return method(self, *args, **kwargs)
+    return wrapper
+
+
+def call_history(method: Callable) -> Callable:
+    """Decorator to store the history of inputs and outputs for a function
+    """
+    @wraps(method)
+    def wrapper(self, *args):
+        """Wrapper function
+        """
+        input = str(args)
+        self._redis.rpush(f"{method.__qualname__}:inputs", input)
+
+        output = method(self, *args)
+        self._redis.rpush(f"{method.__qualname__}:outputs", output)
+
+        return output
+    return wrapper
+
+def replay(method: Callable) -> None:
+    """doc doc class"""
+    input_key = "{}:inputs".format(method.__qualname__)
+    output_key = "{}:outputs".format(method.__qualname__)
+
+    inputs = method.__self__._redis.lrange(input_key, 0, -1)
+    outputs = method.__self__._redis.lrange(output_key, 0, -1)
+
+    print("{} was called {} times:".format(method.__qualname__, len(inputs)))
+    for inp, out in zip(inputs, outputs):
+        print(
+            "{}(*{}) -> {}".format(
+                method.__qualname__, inp.decode("utf-8"), out.decode("utf-8")
+            )
+        )
+
 class Cache:
     """A Cache class"""
     def __init__(self):
