@@ -36,7 +36,7 @@ class Cache:
             return fn(data)
         return data
 
-     def get_str(self, key: str) -> str:
+    def get_str(self, key: str) -> str:
         """Get data from cache as string"""
         return self.get(key, str)
 
