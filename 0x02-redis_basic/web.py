@@ -10,9 +10,10 @@ try:
     r = redis.Redis()
     r.ping()  # Check if Redis is available
     redis_available = True
-except (redis.exceptions.ConnectionError, redis.exceptions.RedisError):
+    print("Redis connected successfully.")
+except (redis.exceptions.ConnectionError, redis.exceptions.RedisError) as e:
     redis_available = False
-    print("Redis is not available. Caching is disabled.")
+    print(f"Redis connection failed: {e}. Caching is disabled.")
 
 
 def get_page(url: str) -> str:
@@ -20,19 +21,25 @@ def get_page(url: str) -> str:
        If Redis is available, cache the content and track access count.
     """
     if redis_available:
-        # Increment the access count for the URL
-        r.incr(f"count:{url}")
+        try:
+            # Increment the access count for the URL
+            r.incr(f"count:{url}")
 
-        # Check if the result is cached in Redis
-        cached = r.get(url)
-        if cached:
-            return cached.decode('utf-8')
+            # Check if the result is cached in Redis
+            cached = r.get(url)
+            if cached:
+                return cached.decode('utf-8')
+        except redis.exceptions.RedisError as e:
+            print(f"Error with Redis: {e}. Continuing without caching.")
 
     # If not cached or Redis is unavailable, fetch the HTML content from the URL
     html_content = requests.get(url).text
 
     if redis_available:
-        # Cache the result in Redis with an expiration time of 10 seconds
-        r.setex(url, 10, html_content)
+        try:
+            # Cache the result in Redis with an expiration time of 10 seconds
+            r.setex(url, 10, html_content)
+        except redis.exceptions.RedisError as e:
+            print(f"Error with Redis while caching: {e}. Continuing without caching.")
 
     return html_content
