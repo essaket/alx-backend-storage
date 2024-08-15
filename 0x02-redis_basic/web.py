@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
-"""A module with tools that request caching and tracking."""
+""" A caching request module
+"""
+import redis
 import requests
-from datetime import datetime, timedelta
-import time
+from functools import wraps
+from typing  import Callable, Any
 
-cache = {}
 
+def track_get_page(fn: Callable) -> Callable:
+    """ getter for get_page
+    """
+    @wraps(fn)
+    def wrapper(url: str) -> str:
+        """
+        wrapper that checks if a url's data is cached
+        and tracks how many times the get_page is called.
+        """
+        client = redis.Redis()
+        client.incr(f'count:{url}')
+        cached_page = client.get(f'{url}')
+        if cached_page:
+            return cached_page.decode('utf-8')
+        response = fn(url)
+        client.set(f'{url}', response, 10)
+        return response
+    return wrapper
+
+
+@track_get_page
 def get_page(url: str) -> str:
-  # ... (rest of your code)
-
-  max_retries = 3
-  retry_delay = 5  # seconds
-
-  for attempt in range(max_retries):
-    try:
-      response = requests.get(url)
-      response.raise_for_status()  # Raise error for non-2xx status codes
-      # ... (rest of your code)
-      break
-    except requests.exceptions.RequestException as e:
-      print(f"Error fetching URL (attempt {attempt + 1}/{max_retries}): {e}")
-      time.sleep(retry_delay)
-
-  else:
-    # Handle max retries exceeded
-    print(f"Max retries exceeded for URL: {url}")
-    return None  # Or handle the error as needed
+    """
+    Makes a http request to a given endpoint
+    params:
+        url - the url of the web page to retreive
+    Returns:
+        The content of the web page.
+    """
+    response = requests.get(url)
+    return response.text
