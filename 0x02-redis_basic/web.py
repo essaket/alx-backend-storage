@@ -1,33 +1,28 @@
 #!/usr/bin/env python3
 """A module with tools that request caching and tracking."""
-import redis
 import requests
-from functools import wraps
-from typing import Callable
+from datetime import datetime, timedelta
+import time
 
+cache = {}
 
-redis_store = redis.Redis()
-"""The module-level Redis instance."""
-
-
-def data_cacher(method: Callable) -> Callable:
-    """Caches the output of fetched data."""
-    @wraps(method)
-    def invoker(url) -> str:
-        """The wrapper function for caching the output."""
-        redis_store.incr(f'count:{url}')
-        result = redis_store.get(f'result:{url}')
-        if result:
-            return result.decode('utf-8')
-        result = method(url)
-        redis_store.set(f'count:{url}', 0)
-        redis_store.setex(f'result:{url}', 10, result)
-        return result
-    return invoker
-
-
-@data_cacher
 def get_page(url: str) -> str:
-    """Returns the content of a URL after caching the request's response,
-    and tracking the request."""
-    return requests.get(url).text
+  # ... (rest of your code)
+
+  max_retries = 3
+  retry_delay = 5  # seconds
+
+  for attempt in range(max_retries):
+    try:
+      response = requests.get(url)
+      response.raise_for_status()  # Raise error for non-2xx status codes
+      # ... (rest of your code)
+      break
+    except requests.exceptions.RequestException as e:
+      print(f"Error fetching URL (attempt {attempt + 1}/{max_retries}): {e}")
+      time.sleep(retry_delay)
+
+  else:
+    # Handle max retries exceeded
+    print(f"Max retries exceeded for URL: {url}")
+    return None  # Or handle the error as needed
